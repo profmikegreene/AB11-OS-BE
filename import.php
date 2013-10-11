@@ -1,8 +1,11 @@
 <?php
 require_once($_SERVER['DOCUMENT_ROOT'].'/www.wp.dev/wp-load.php' );
+// require_once($_SERVER['DOCUMENT_ROOT'].'/wp-load.php' );
 global $wpdb;
 global $ab11_os_admin_table;
 global $ab11_os_table;
+
+$output = '<div id="ab11-os-notice" class="updated fade">';
 
 $ab11_os_admin_table = $wpdb->base_prefix . 'ab11_os_admin';
 
@@ -12,9 +15,9 @@ $semester_id = $file['semester_id'];
 $ab11_os_table = $wpdb->base_prefix . 'ab11_os_' . $semester_id;
 
 $serialized = is_null( $file ) ? NULL: serialize( $file );
-$output = '';
+
 if( is_null( $file ) ) {
-	$output = 'No file found';
+	$output .= 'No file found';
 }else {
 	$rows_affected = $wpdb->insert( $ab11_os_admin_table, array(
 		'semester_id' => $file['semester_id'],
@@ -27,6 +30,7 @@ if( is_null( $file ) ) {
 
 	if( $wpdb->get_var( "SHOW TABLES LIKE '$ab11_os_table'" ) == $ab11_os_table) {
 			$query = $wpdb->query("DROP TABLE $ab11_os_table");
+			$output .= '<p>Dropped old ' . $ab11_os_table . '</p>';
 	}
 
 	$sql = $wpdb->prepare( "CREATE TABLE $ab11_os_table (
@@ -43,7 +47,7 @@ if( is_null( $file ) ) {
 		end_time varchar(10),
 		section varchar(4) NOT NULL,
 		room varchar(4),
-		credits int(2) unsigned NOT NULL,
+		credits varchar(3) NOT NULL,
 		location varchar(30) NOT NULL,
 		notes varchar(512),
 		course_description varchar(1024) NOT NULL,
@@ -59,11 +63,10 @@ if( is_null( $file ) ) {
 		import_id int(9) unsigned NOT NULL
 	);");
 
+	$output .= '<p>Created new ' . $ab11_os_table . '</p>';
+
 	require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 	dbDelta( $sql );
-
-
-
 
 	ini_set('auto_detect_line_endings',TRUE);
 
@@ -96,17 +99,22 @@ if( is_null( $file ) ) {
 	  		$course['withdrawal_date'] = $tmp[23];
 	  		$course['career'] = $tmp[24];
 	  		$course['semester_id'] = $semester_id;
-	  		$course ['import_id'] = $import_id;
+	  		$course['import_id'] = $import_id;
 
-	  		$keys = implode( ", ", array_keys($course) );
-	  		$sql = "INSERT INTO $ab11_os_table ( $keys ) " .
-	  			"VALUES ( %s, %d, %s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %d, %s, %s, %s, %s, %d, %d, %s, %s, %s, %s, %s, %d, %d)";
+	  		$filtered_course = filter_course( $course );
 
-				$query = $wpdb->query( $wpdb->prepare( $sql, $course ) );
+
+	  		if ( is_array( $filtered_course ) ){
+	  			$keys = implode( ", ", array_keys($filtered_course) );
+	  			$sql = "INSERT INTO $ab11_os_table ( $keys ) " .
+	  			"VALUES ( %s, %d, %s, %s, %d, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %s, %s, %s, %s, %s, %d, %d)";
+
+					$query = $wpdb->query( $wpdb->prepare( $sql, $filtered_course ) );
+	  		}
 	  	}
 	  }
 	} else {
-		$output .= "Cannot open file";
+		$output .= "<p>Cannot open file</p>";
 	}
 	ini_set('auto_detect_line_endings',FALSE);
 
@@ -122,15 +130,37 @@ if( is_null( $file ) ) {
 	) );
 
 	if ($count > 0 ){
-   	$output .= '<div id="ab11-os-notice" class="updated fade"><p>Successfully imported ' . $count;
-   	$output .= ' courses for semester ' . $semester_id . '.</p></div>' . "\n\t";
+   	$output .= '<p>Successfully imported ' . $count;
+   	$output .= ' courses for semester ' . $semester_id . '.</p>' . "\n\t";
 
 	} else {
-		$output .= '<div id="ab11-os-notice" class="error fade"><p>Error Importing Courses.</p></div>' . "\n\t";
+		$output .= '<p>Error Importing Courses.</p>' . "\n\t";
 
 	}
-
+	$output .= '</div>';
 	echo $output;
+}
+
+function filter_course( $course ) {
+
+	//Test for lab sections, if true change credits to LAB if false return whole numbe of credits
+	$course['credits'] = ( strpbrk( $course['section'], 'L' ) !== FALSE ) ?
+		'LAB' : strstr( $course['credits'], '.', TRUE );
+
+	//Test for sections that need removal
+	$remove_sections = ['54HC', '54CB', '94NH', '279'];
+	$course = in_array( $course['section'], $remove_sections ) ? NULL : $course;
+
+	//Test for campuses that need removal
+	$remove_campuses = ['HCC'];
+	$course = in_array( $course['location'], $remove_campuses ) ? NULL : $course;
+
+	//Test for session that need removal
+	$remove_sessions = ['YR1', 'YR2', 'YR3'];
+	$course = in_array( $course['session'], $remove_sessions ) ? NULL : $course;
+
+	return $course;
+
 }
 
 ?>

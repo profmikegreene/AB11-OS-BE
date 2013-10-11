@@ -3,7 +3,7 @@
 Plugin Name: Awaken Benehime Online Schedule Back End
 Plugin URI: http://www.rappahannock.edu
 Description: Online Schedule for RCC website.
-Version: 11.0.0
+Version: 11.0.1
 Author: Michael Greene
 Author URI: http://profmikegreene.com
 License: This plugin is for RCC
@@ -19,14 +19,6 @@ define("AB11_OS_DB_TABLES", serialize( $ab11_os_table ) );
 
 $ab11_os_admin_table = $wpdb->base_prefix . "ab11_os_admin";
 define("AB11_OS_DB_ADMIN_TABLE", $ab11_os_admin_table );
-
-
-
-
-
-
-
-
 
 if ( ! function_exists( 'ab11_os_install' ) ) :
 function ab11_os_install () {
@@ -55,14 +47,19 @@ endif;
 register_activation_hook( __FILE__, 'ab11_os_install' );
 
 if ( ! function_exists( 'ab11_os_admin_init' ) ) :
-function ab11_os_admin_init() {
-	wp_register_style( 'ab11_os_styles', plugins_url( 'style.css', __FILE__ ) );
-	wp_enqueue_media();
-	wp_register_script( 'ab11_os_scripts', plugins_url( 'script.js', __FILE__ ), array( 'jquery' ), false, true );
+function ab11_os_admin_init( $hook_suffix ) {
+	
+		wp_register_style( 'ab11_os_styles', plugins_url( 'style.css', __FILE__ ) );
+
+		wp_enqueue_media();
+
+		wp_register_script( 'ab11_os_scripts', plugins_url( 'script.js', __FILE__ ), array( 'jquery' ), false, true );
+
 }
 endif;
+if ( isset( $_GET['page']) && $_GET['page'] == 'ab11_os_manage'  ){
 add_action( 'admin_init', 'ab11_os_admin_init' );
-
+}
 if ( ! function_exists( 'ab11_os_menu' ) ) :
 function ab11_os_menu() {
 	add_menu_page(
@@ -169,10 +166,11 @@ endif;
 
 if ( ! function_exists( 'ab11_os_import' ) ) :
 function ab11_os_import() {
+
 	wp_enqueue_style( 'ab11_os_styles' );
 	wp_enqueue_script( 'ab11_os_scripts' );
 
-	$outpu = '';
+	$output = '';
 
 	$output .= '<div class="wrap" id="ab11-os-import-wrap">' . "\n\t";
   $output .= '<div id="icon-edit-schedules" class="icon32 icon32-posts-post"><br></div>' . "\n\t";
@@ -194,7 +192,6 @@ if ( ! function_exists( 'ab11_os_admin_bar' ) ) :
 function ab11_os_admin_bar() {
     global $wp_admin_bar;
 
-    //Add a link called 'My Link'...
     $wp_admin_bar->add_menu( array(
         'id'    => 'ab11-os-import',
         'title' => 'Schedule',
@@ -207,16 +204,55 @@ endif;
 add_action( 'wp_before_admin_bar_render', 'ab11_os_admin_bar' );
 
 
+if ( ! function_exists( 'ab11_os_get_semesters' ) ) :
+function ab11_os_get_semesters() {
+	global $wpdb;
+	global $ab11_os_admin_table;
+	$db_tables = $wpdb->get_results( "SELECT * FROM " . $ab11_os_admin_table. " WHERE (status = 'published') ORDER BY semester_id DESC");
+
+	$output = '';
+
+	foreach ($db_tables as $semester) {
+			$semester_name = decrypt_semester_id( $semester->semester_id );
+			$output .= '<li><a href="?state=get_semester&semester_id=' . $semester->semester_id . '" class="select-semester" data-career="CRED" data-semester-id="';
+			$output .= $semester->semester_id . '">' . $semester_name . '</a></li>' . "\n";
+
+			$output .= '<li><a href="?state=get_semester&semester_id=' . $semester->semester_id . '" class="select-semester" data-career="CNED" data-semester-id="';
+			$output .= $semester->semester_id . '">' . $semester_name . ' Workforce</a></li>' . "\n";
+	}
+
+	echo $output;
+}
+endif;
+
+if ( ! function_exists( 'decrypt_semester_id' ) ) :
+function decrypt_semester_id( $semester_id ) {
+	$chunks = str_split( $semester_id, 1 );
+	$output = '';
+
+	switch ($chunks[3]) {
+	 	case '2':
+		 	$output .= 'Spring 201' . $chunks[2];
+	 		break;
+
+	 	case '3':
+		 	$output .= 'Summer 201' . $chunks[2];
+	 		break;
+
+	 	case '4':
+		 	$output .= 'Fall 201' . $chunks[2];
+	 		break;
+
+	 	default:
+	 		$output .= 'Semester 201' . $chunks[2];
+	 		break;
+	 }
+	 return $output;
+	}
+endif;
+
 // if ( ! function_exists( '' ) ) :
 // function () {
-
 // }
 // endif;
-
-// if ( ! function_exists( '' ) ) :
-// function () {
-
-// }
-// endif;
-
 ?>

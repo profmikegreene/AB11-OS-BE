@@ -76,7 +76,7 @@ class AB11_OS_WP_List_Table extends WP_List_Table {
 
 		$ab11_os_admin_table = $wpdb->base_prefix . 'ab11_os_admin';
 		$sql                   = "SELECT * FROM $ab11_os_admin_table WHERE (status = 'published') ";
-		$sql                   .= "ORDER BY import_id ASC";
+		$sql                   .= "ORDER BY import_id DESC";
 		$per_page              = 50;
 		$columns               = $this->get_columns();
 		$hidden                = array();

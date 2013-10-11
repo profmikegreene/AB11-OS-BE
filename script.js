@@ -15,7 +15,7 @@ jQuery(document).ready(function($){
         $("#"+id).val(attachment.url);
         attachment.semester_id = $('#ab11_os_semester_id').val();
         $.ajax({
-          url: '/wp-content/plugins/ab11-online-schedule/import.php',
+          url: '/wp-content/plugins/ab11-os-be/import.php',
           type: 'POST',
           data: ({
             'attachment': attachment,
